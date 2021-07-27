@@ -39,6 +39,7 @@ void Display::Init() {
     assert( SSD1306_I2CMasterAttachDisplayDefault( &I2CDisplay, I2CDisplayWidth, I2CDisplayHeight, I2CDisplayAddress, I2CResetPin ) == true );
     SSD1306_SetHFlip(&I2CDisplay, true);
     SSD1306_SetVFlip(&I2CDisplay, true);
+    SSD1306_SetContrast(&I2CDisplay, 0xFF);
 }
 
 void Display::Demo() {

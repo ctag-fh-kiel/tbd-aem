@@ -5,25 +5,27 @@ cmake_minimum_required(VERSION 3.13)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_compile_definitions(
-        RAPIDJSON_ALLOCATOR_DEFAULT_CHUNK_CAPACITY=4096 # rapidjson
-        RAPIDJSON_HAS_STDSTRING=1 # rapidjson
-        N_TRIGS=2
-)
-
-add_compile_options(
-        -Wno-unused-local-typedefs
-        # https://stackoverflow.com/questions/22931147/stdisinf-does-not-work-with-ffast-math-how-to-check-for-infinity
-        -ffast-math
-        #-ffast-math -fno-finite-math-only
-)
-
-
-
+# pull in idf specific items, config vars etc.
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 project(ctag-tbd)
 
+idf_build_set_property(COMPILE_OPTIONS -Wno-unused-local-typedefs -ffast-math APPEND) # -ffast-math -fno-finite-math-only https://stackoverflow.com/questions/22931147/stdisinf-does-not-work-with-ffast-math-how-to-check-for-infinity
+idf_build_set_property(COMPILE_DEFINITIONS -DRAPIDJSON_ALLOCATOR_DEFAULT_CHUNK_CAPACITY=4096 APPEND)
+idf_build_set_property(COMPILE_DEFINITIONS -DRAPIDJSON_HAS_STDSTRING=1 APPEND)
+
+if(CONFIG_TBD_PLATFORM_STRAMPLER)
+    message("Configuring for Strämpler!")
+    idf_build_set_property(COMPILE_DEFINITIONS -DN_CVS=8 APPEND)
+    idf_build_set_property(COMPILE_DEFINITIONS -DN_TRIGS=2 APPEND)
+elseif(CONFIG_TBD_PLATFORM_MK2)
+    message("Configuring for MK2!")
+    idf_build_set_property(COMPILE_DEFINITIONS -DN_CVS=14 APPEND)
+    idf_build_set_property(COMPILE_DEFINITIONS -DN_TRIGS=6 APPEND)
+else()
+    idf_build_set_property(COMPILE_DEFINITIONS -DN_CVS=4 APPEND)
+    idf_build_set_property(COMPILE_DEFINITIONS -DN_TRIGS=2 APPEND)
+endif()
 
 # Create a SPIFFS image from the contents of the 'spiffs_image' directory
 # that fits the partition named 'storage'. FLASH_IN_PROJECT indicates that

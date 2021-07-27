@@ -731,8 +731,10 @@ esp_err_t RestServer::srom_handler(httpd_req_t *req) {
 
 esp_err_t RestServer::get_iocaps_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "application/json");
-#ifdef CONFIG_TBD_PLATFORM_STR
+#if defined(CONFIG_TBD_PLATFORM_STR)
     string const s("{\"t\":[\"TRIG0\", \"TRIG1\"], \"cv\":[\"CV1\",\"CV2\",\"CV3\",\"CV4\",\"CV5\",\"CV6\",\"CV7\",\"CV8\"]}");
+#elif defined(CONFIG_TBD_PLATFORM_MK2)
+    string const s("{\"t\":[\"TRIG0\",\"TRIG1\",\"TRIG2\",\"TRIG3\",\"TRIG4\",\"TRIG5\"], \"cv\":[\"UCVPOT0\",\"UCVPOT1\",\"UCVPOT2\",\"UCVPOT3\",\"POT0\",\"POT1\",\"POT2\",\"POT3\",\"PCV0\",\"PCV1\",\"BPCV0\",\"BPCV1\",\"BPCV2\",\"BPCV3\"]}");
 #else
     string const s("{\"t\":[\"TRIG0\", \"TRIG1\"], \"cv\":[\"CV0\",\"CV1\",\"POT0\",\"POT1\"]}");
 #endif

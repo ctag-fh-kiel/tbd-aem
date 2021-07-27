@@ -21,20 +21,18 @@ respective component folders / files if different from this license.
 
 
 #include "SPManager.hpp"
-#include "Calibration.hpp"
 #include "esp_log.h"
 #include "driver/i2s.h"
 #include "esp_system.h"
 #include "stdint.h"
 #include "string.h"
-#include "gpio.hpp"
-#include "adc.hpp"
 #include "codec.hpp"
 #include "esp_heap_caps.h"
 #include "led_rgb.hpp"
 #include "network.hpp"
 #include "SerialAPI.hpp"
 #include "RestServer.hpp"
+#include "Control.hpp"
 #include <math.h>
 #include "helpers/ctagFastMath.hpp"
 #include "helpers/ctagSampleRom.hpp"
@@ -56,15 +54,10 @@ using namespace CTAG::DRIVERS;
 #define NG_BOTH 1
 #define NG_LEFT 2
 #define NG_RIGHT 3
-// defined in CMakelists.txt
-//#define N_CVS 4
-//#define N_TRIGS 2
 
 // audio real-time task
 void IRAM_ATTR SoundProcessorManager::audio_task(void *pvParams) {
     float fbuf[BUF_SZ * 2];
-    float cv[N_CVS];
-    uint8_t trig[N_TRIGS];
     float peakIn = 0.f, peakOut = 0.f;
     float peakL = 0.f, peakR = 0.f;
     int ngState = NG_OPEN;
@@ -83,8 +76,6 @@ void IRAM_ATTR SoundProcessorManager::audio_task(void *pvParams) {
 
     SP::ProcessData pd;
     pd.buf = fbuf;
-    pd.cv = cv;
-    pd.trig = trig;
 
     // generate linear ramp ]0,1[ squared
     for (uint32_t i = 0; i < BUF_SZ; i++) {
@@ -93,13 +84,8 @@ void IRAM_ATTR SoundProcessorManager::audio_task(void *pvParams) {
     }
 
     while (runAudioTask) {
-        // update data from ADCs for real-time control 
-        ADC::Update();
-        CAL::Calibration::MapCVData(ADC::data, cv);
-
-        // update trig data
-        trig[0] = GPIO::GetTrig0();
-        trig[1] = GPIO::GetTrig1();
+        // update data from ADCs and GPIOs for real-time control
+        CTAG::CTRL::Control::Update(&pd.trig, &pd.cv);
 
         // get normalized raw data from CODEC
         DRIVERS::Codec::ReadBuffer(fbuf, BUF_SZ);
@@ -347,6 +333,9 @@ void SoundProcessorManager::StartSoundProcessor() {
     }
     */
 
+    // init control
+    CTRL::Control::Init();
+
     // init codec
     DRIVERS::Codec::InitCodec();
 #ifdef CONFIG_TBD_PLATFORM_STR
@@ -433,29 +422,10 @@ void SoundProcessorManager::SetConfigurationFromJSON(const string &data) {
 
 void SoundProcessorManager::updateConfiguration() {
     ledBlink = 3;
-    CAL::CVConfig cvCfg[4];
-    // CV config
-    if (model->GetConfigurationData("cv_ch0").compare("bipolar") == 0) {
-        cvCfg[0] = CAL::CVConfig::CVBipolar;
-    } else {
-        cvCfg[0] = CAL::CVConfig::CVUnipolar;
-    }
-    if (model->GetConfigurationData("cv_ch1").compare("bipolar") == 0) {
-        cvCfg[1] = CAL::CVConfig::CVBipolar;
-    } else {
-        cvCfg[1] = CAL::CVConfig::CVUnipolar;
-    }
-    if (model->GetConfigurationData("cv_ch2").compare("bipolar") == 0) {
-        cvCfg[2] = CAL::CVConfig::CVBipolar;
-    } else {
-        cvCfg[2] = CAL::CVConfig::CVUnipolar;
-    }
-    if (model->GetConfigurationData("cv_ch3").compare("bipolar") == 0) {
-        cvCfg[3] = CAL::CVConfig::CVBipolar;
-    } else {
-        cvCfg[3] = CAL::CVConfig::CVUnipolar;
-    }
-    CAL::Calibration::ConfigCVChannels(cvCfg[0], cvCfg[1], cvCfg[2], cvCfg[3]);
+    CTRL::Control::SetCVChannelBiPolar(model->GetConfigurationData("cv_ch0") == "bipolar",
+                              model->GetConfigurationData("cv_ch1") == "bipolar",
+                              model->GetConfigurationData("cv_ch2") == "bipolar",
+                              model->GetConfigurationData("cv_ch3") == "bipolar");
 
     // noise gate configuration
     if (model->GetConfigurationData("ng_config").compare("off") == 0) {
